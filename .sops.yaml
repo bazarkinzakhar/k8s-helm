@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: .*\.enc\.yaml$
+    pgp: "YOUR_PGP_FINGERPRINT"

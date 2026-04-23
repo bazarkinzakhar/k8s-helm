@@ -1,0 +1,44 @@
+name: Middle+ DevOps Pipeline
+
+on: [push]
+
+jobs:
+  lint-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Helm Lint
+        run: helm lint ./charts/k8s-app
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./charts/k8s-app
+
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "bazarkinzakhar/k8s-project:latest"
+          format: "table"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+
+  deploy:
+    needs: lint-and-scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install SOPS
+        run: |
+          curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops-v3.7.3.linux.amd64
+          mv sops-v3.7.3.linux.amd64 /usr/local/bin/sops
+          chmod +x /usr/local/bin/sops
+
+      - name: Deploy to K8s
+        run: |
+          helm upgrade --install my-app ./charts/k8s-app \
+            --namespace production --create-namespace \
+            --values ./charts/k8s-app/values.yaml

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { include "k8s-app.fullname" . } }
+  namespace: { { .Values.namespace } }
+spec:
+  replicas: { { .Values.replicaCount } }
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: { { include "k8s-app.name" . } }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: { { include "k8s-app.name" . } }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          resources: { { - toYaml .Values.resources | nindent 12 } }
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 80
+          envFrom:
+            - secretRef:
+                name: app-secrets
